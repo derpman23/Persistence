@@ -8,7 +8,7 @@ module.exports = {
     name: "answer",
     aliases: ["ans"],
     desc: "Set the answer for the challenge",
-    syntax: "answer [<answer>, set <answer>, role <role>, channel <channel>]",
+    syntax: "answer [<answer>, set <answer>, role <role>, channel <channel>, reset]",
     execute(msg, args, client) {
         let answer = {};
 
@@ -109,6 +109,33 @@ module.exports = {
                     return msg.reply("successfully set the channel!");
                 });
             });   
+        }
+        else if (args[0].toLowerCase() == "reset") {
+            client.guilds.fetch(process.env.GUILD_ID).then(guild => {
+                guild.members.fetch(msg.author.id).then(user => {
+                    // Only administrators and server owners can set the answer
+                    if (!user.hasPermission("ADMINISTRATOR", { checkOwner: true }))
+                        return msg.reply("only administrators and owners can set the channel.");
+
+                    //remove solver role
+                    guild.roles.fetch(answer.role).then(role => {
+                        let members = role.members;
+
+                        members.forEach(member => {member.roles.remove(answer.role)});
+                    });
+                    
+                    //reset json values for answer and solver
+                    answer.solvers = [];
+                    answer.answer = null;
+
+                    // Update the data file
+                    fs.writeFile(join(process.cwd(), "src", "data", "answer.json"), JSON.stringify(answer, null , "\t"), err => {
+                        if (err) console.error(err);
+                    });
+
+                    return msg.reply("successfully reset the answer and solvers!");
+                });
+            });
         }
         // The command is a submission
         else {
