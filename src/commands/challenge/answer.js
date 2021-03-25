@@ -2,6 +2,8 @@ const fs = require("fs");
 const { join } = require("path");
 const { writeFileRecursive } = require(join(process.cwd(), "src", "include", "fs-extender.js"));
 
+var cooldown = new Set();
+
 module.exports = {
     name: "answer",
     aliases: ["ans"],
@@ -110,6 +112,13 @@ module.exports = {
         }
         // The command is a submission
         else {
+            //check if cooldown
+            if (cooldown.has(msg.author.id)) {
+                msg.react("⌛");
+
+                return msg.delete({timeout : 3000});
+            }
+
             // Check if an answer is set
             if (answer.answer === null)
                 return msg.reply("an answer isn't set.")
@@ -167,7 +176,13 @@ module.exports = {
             }
             else {
                 msg.react("❌");
-                return msg.delete({ timeout: 3000 });
+
+                msg.delete({ timeout: 3000 });
+
+                //add cooldown 10 sec
+                cooldown.add(msg.author.id);
+
+                setTimeout(() => cooldown.delete(msg.author.id), 10000);
             }
         }
     }
