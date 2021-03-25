@@ -3,7 +3,7 @@ const { readdirSync } = require("fs");
 const { join } = require("path");
 
 // Get the bot's presence from include
-const { prefix, presence } = require("./include/config.json")
+const { prefix, presence } = require(join(__dirname, "include", "config.json"));
 
 // Load our environment variables from the .env file
 require("dotenv").config();
@@ -43,8 +43,8 @@ client.once("ready", () => {
 
 // Runs every time a message is sent
 client.on("message", msg => {
-    // Don't allow commands to be run by bots or in DMs
-    if (msg.author.bot || msg.channel.type == "dm") return;
+    // Don't allow commands to be run by bots
+    if (msg.author.bot) return;
 
     // If the message starts with the prefix
     if (msg.content.startsWith(prefix)) {
@@ -66,7 +66,7 @@ client.on("message", msg => {
 
         // Try to execute the command or return if it doesn't exist
         try { client.commands.get(cmd).execute(msg, args, client) }
-        catch(e) { return; }
+        catch(e) { return console.log(e); }
     }
 
     return;

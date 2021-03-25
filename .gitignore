@@ -12,3 +12,8 @@ node_modules/
 # Ignore the environment variables because they contain sensitive data.
 ###############################################################################
 .env
+
+###############################################################################
+# Ignore the data folder because it is bot specific.
+###############################################################################
+src/data/
