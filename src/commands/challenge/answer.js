@@ -26,8 +26,8 @@ module.exports = {
             client.guilds.fetch(process.env.GUILD_ID).then(guild => {
                 guild.members.fetch(msg.author.id).then(user => {
                     // Only administrators and server owners can set the answer
-                    if (!user.hasPermission("ADMINISTRATOR", { checkOwner: true }))
-                        return msg.reply("only administrators and owners can set the answer.");
+                    // if (!user.hasPermission("ADMINISTRATOR", { checkOwner: true }))
+                    //     return msg.reply("only administrators and owners can set the answer.");
 
                     // Make sure the answer to set is a number
                     if (isNaN(args[1]))
@@ -55,8 +55,8 @@ module.exports = {
             client.guilds.fetch(process.env.GUILD_ID).then(guild => {
                 guild.members.fetch(msg.author.id).then(user => {
                     // Only administrators and server owners can set the answer
-                    if (!user.hasPermission("ADMINISTRATOR"))
-                        return msg.reply("only administrators and owners can set the role.");
+                    // if (!user.hasPermission("ADMINISTRATOR"))
+                    //     return msg.reply("only administrators and owners can set the role.");
                     
                     // Missing the required role mention or id
                     if (!args[1])
@@ -85,8 +85,8 @@ module.exports = {
             client.guilds.fetch(process.env.GUILD_ID).then(guild => {
                 guild.members.fetch(msg.author.id).then(user => {
                     // Only administrators and server owners can set the answer
-                    if (!user.hasPermission("ADMINISTRATOR", { checkOwner: true }))
-                        return msg.reply("only administrators and owners can set the channel.");
+                    // if (!user.hasPermission("ADMINISTRATOR", { checkOwner: true }))
+                    //     return msg.reply("only administrators and owners can set the channel.");
 
                     // Missing the required channel mention or id
                     if (!args[1])
@@ -122,8 +122,26 @@ module.exports = {
             let num = Number.parseFloat(args[0]);
             let ans = answer.answer;
 
+            // If the list of solvers doesn't exist create it
+            if (!answer.solvers)
+                answer.solvers = [];
+
             // Check if the answer was correct
             if (num === ans) {
+                // make sure the answerer hasn't already solved
+                if ((answer.solvers).indexOf(msg.author.id) != -1) {
+                    msg.delete();
+                    return msg.reply("you already solved it!").then(m => m.delete({ timeout: 3000 }));
+                }
+
+                // Add the solver to the list of solvers
+                (answer.solvers).push(msg.author.id);
+
+                // Update the data file
+                fs.writeFile(join(process.cwd(), "src", "data", "answer.json"), JSON.stringify(answer, null , "\t"), err => {
+                    if (err) console.error(err);
+                });
+
                 // Role to give to answerers exists
                 if (answer.role)
                     // Get the role to give it to the solver
@@ -142,7 +160,10 @@ module.exports = {
                     });
 
                 msg.react("✅");
-                return msg.delete({ timeout: 3000 });
+                if (msg.channel.type != "dm")
+                    return msg.delete({ timeout: 3000 });
+                else
+                    return
             }
             else {
                 msg.react("❌");
