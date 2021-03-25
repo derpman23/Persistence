@@ -1,23 +1,18 @@
 const fs = require("fs");
 const { join } = require("path");
-const { fileExists } = require("../../include/fs-extender");
 const { writeFileRecursive } = require(join(process.cwd(), "src", "include", "fs-extender.js"));
 
 module.exports = {
     name: "answer",
     aliases: ["ans"],
     desc: "Set the answer for the challenge",
-    syntax: "answer [set, give] <answer>",
+    syntax: "answer [<answer>, set <answer>, role <role>, channel <channel>]",
     execute(msg, args, client) {
-        // Answer will be filled by making or requiring the file
-        let answer;
+        let answer = {};
 
         // If the answer data file doesn't exist, make it
         if (!fs.existsSync(join(process.cwd(), "src", "data", "answer.json")))
-        {
-            answer = {};
-            writeFileRecursive(join(process.cwd(), "src", "data", "answer.json"), JSON.stringify(answer, null , 4), overwrite = false);
-        }
+            writeFileRecursive(join(process.cwd(), "src", "data", "answer.json"), JSON.stringify(answer, null , "\t"), overwrite = false);
         // If the answer data file exists, read it
         else
             answer = require(join(process.cwd(), "src", "data", "answer.json"));
@@ -28,62 +23,90 @@ module.exports = {
 
         // If the command is to set the answer
         if (args[0].toLowerCase() == "set") {
-            // Answers can only be set from a guild
-            if (msg.channel.type == "dm")
-                return msg.reply("answers can only be set from a guild.");
+            client.guilds.fetch(process.env.GUILD_ID).then(guild => {
+                guild.members.fetch(msg.author.id).then(user => {
+                    // Only administrators and server owners can set the answer
+                    if (!user.hasPermission("ADMINISTRATOR", { checkOwner: true }))
+                        return msg.reply("only administrators and owners can set the answer.");
 
-            // Only administrators and server owners can set the answer
-            if (!msg.member.hasPermission("ADMINISTRATOR") && msg.member.id != msg.guild.ownerID)
-                return msg.reply("only administrators can set the answer.");
-                
-            // Make sure the answer to set is a number
-            if (isNaN(args[1]))
-                return msg.reply("answer must be a number.");
-                
-            answer.answer = Number.parseFloat(args[1]);
-                
-            // Write the answer to file
-            fs.writeFile(join(process.cwd(), "src", "data", "answer.json"), JSON.stringify(answer, null , 4), err => {
-                if (err) console.error(err);
+                    // Make sure the answer to set is a number
+                    if (isNaN(args[1]))
+                        return msg.reply("answer must be a number.");
+                    
+                    // Set the answer from the provided value
+                    answer.answer = Number.parseFloat(args[1]);
+                        
+                    // Write the answer to file
+                    fs.writeFile(join(process.cwd(), "src", "data", "answer.json"), JSON.stringify(answer, null , "\t"), err => {
+                        if (err) console.error(err);
+                    });
+                    
+                    // Delete message and send confirmation
+                    msg.reply('successfully set answer.');
+                    return msg.delete();
+                });
             });
-            
-            // Delete message and send confirmation
-            msg.reply('successfully set answer.');
-            return msg.delete();
         }
-        else if (args[0].toLowerCase() == "give") {
-            // Only administrators and server owners can give the answerers a role
-            if (!msg.member.hasPermission("ADMINISTRATOR") && msg.member.id != msg.guild.ownerID)
-                return msg.reply("only administrators can set the answer.");
+        else if (args[0].toLowerCase() == "role") {
+            // Channel can only be set from a guild
+            if (msg.channel.type == "dm")
+                return msg.reply("you need to be in a guild to set the channel.");
 
-            if (!args[1])
-                return msg.reply("you need to specify a role to give.");
+            client.guilds.fetch(process.env.GUILD_ID).then(guild => {
+                guild.members.fetch(msg.author.id).then(user => {
+                    // Only administrators and server owners can set the answer
+                    if (!user.hasPermission("ADMINISTRATOR"))
+                        return msg.reply("only administrators and owners can set the role.");
+                    
+                    // Missing the required role mention or id
+                    if (!args[1])
+                        return msg.reply("you need to specify a role to give.");
 
-            // Get the role
-            if (args[1].startsWith("<@&") && args[1].endsWith(">"))
-                args[1] = args[1].slice(3, -1);
+                    // Parse the role if needed to allow pings and ids
+                    args[1] = (args[1].startsWith("<@&") && args[1].endsWith(">")) ? args[1].slice(3, -1) : args[1];
 
-            // Alert if there are no solvers
-            if (!answer.solvers)
-                return msg.reply("no one has solved this.");
+                    // Set the role to give solvers by id
+                    answer.role = args[1];
 
-            // Get the role to give to solvers
-            const role = msg.guild.roles.cache.get(args[1]);
+                    // Update the data file
+                    fs.writeFile(join(process.cwd(), "src", "data", "answer.json"), JSON.stringify(answer, null , "\t"), err => {
+                        if (err) console.error(err);
+                    });
 
-            // Loop through all the solvers and give them the role
-            for (const user_id of answer.solvers)
-                msg.guild.members.cache.get(user_id).roles.add(role);
-
-            // Reset the answer and solvers
-            answer.answer = null;
-            answer.solvers = [];
-
-            // Update the data file
-            fs.writeFile(join(process.cwd(), "src", "data", "answer.json"), JSON.stringify(answer, null , 4), err => {
-                if (err) console.error(err);
+                    return msg.reply("successfully set the answer role!");
+                });
             });
+        }
+        else if (args[0].toLowerCase() == "channel") {
+            // Channel can only be set from a guild
+            if (msg.channel.type == "dm")
+                return msg.reply("you need to be in a guild to set the channel.");
 
-            return msg.reply("gave solvers that role!");
+            client.guilds.fetch(process.env.GUILD_ID).then(guild => {
+                guild.members.fetch(msg.author.id).then(user => {
+                    // Only administrators and server owners can set the answer
+                    if (!user.hasPermission("ADMINISTRATOR", { checkOwner: true }))
+                        return msg.reply("only administrators and owners can set the channel.");
+
+                    // Missing the required channel mention or id
+                    if (!args[1])
+                        return msg.reply("you need to specify a channel to respond in.");
+
+                    // Get the channel
+                    if (args[1].startsWith("<#") && args[1].endsWith(">"))
+                        args[1] = args[1].slice(2, -1);
+
+                    // Set the role to give solvers by id
+                    answer.channel = args[1];
+
+                    // Update the data file
+                    fs.writeFile(join(process.cwd(), "src", "data", "answer.json"), JSON.stringify(answer, null , "\t"), err => {
+                        if (err) console.error(err);
+                    });
+
+                    return msg.reply("successfully set the channel!");
+                });
+            });   
         }
         // The command is a submission
         else {
@@ -101,22 +124,30 @@ module.exports = {
 
             // Check if the answer was correct
             if (num === ans) {
-                // Make the list of solvers if it doesn't exist
-                if (!answer.solvers)
-                    answer.solvers = [];
+                // Role to give to answerers exists
+                if (answer.role)
+                    // Get the role to give it to the solver
+                    client.guilds.fetch(process.env.GUILD_ID).then(guild => {
+                        guild.roles.fetch(answer.role).then(role => {
+                            guild.members.fetch(msg.author.id).then(user => user.roles.add(role));
+                        });
+                    });
 
-                // Add the user to the solvers list
-                answer.solvers.push(msg.author.id);
+                // Channel to sent messages to exists
+                if (answer.channel)
+                    // Send the message to the channel
+                    client.guilds.fetch(process.env.GUILD_ID).then(guild => {
+                        let channel = guild.channels.cache.get(answer.channel);
+                        channel.send(`<@${msg.author.id}> solved it!`);
+                    });
 
-                // Update the data file
-                fs.writeFileSync(join(process.cwd(), "src", "data", "answer.json"), JSON.stringify(answer, null , 4), err => {
-                    if (err) console.error(err);
-                });
-
-                return msg.react("✅");
+                msg.react("✅");
+                return msg.delete({ timeout: 3000 });
             }
-            else
-                return msg.react("❌");
+            else {
+                msg.react("❌");
+                return msg.delete({ timeout: 3000 });
+            }
         }
     }
 }

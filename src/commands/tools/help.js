@@ -13,7 +13,7 @@ module.exports = {
                 .setColor('#08596e')
                 .setTitle(cmd ? `__Help Menu: ${cmd.name}__` : '__Help Menu__')
                 .setTimestamp()
-                .setFooter('Persistence Help')
+                .setFooter(`${client.user.username} Help`)
 
             // If there isn't a command parameter passed as an argument
             if(!cmd) {
