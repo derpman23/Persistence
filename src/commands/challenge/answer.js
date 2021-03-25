@@ -119,9 +119,9 @@ module.exports = {
 
                     //remove solver role
                     guild.roles.fetch(answer.role).then(role => {
-                        let members = role.members;
+                        const members = role.members;
 
-                        members.forEach(member => {member.roles.remove(answer.role)});
+                        members.forEach(member => member.roles.remove(answer.role));
                     });
                     
                     //reset json values for answer and solver
